@@ -1,622 +1,785 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IOTA Notarization — Immutable vs Versioned Documents (VeriPura Context)</title>
-  <style>
-    :root{
-      --bg:#0b1220; --card:#0f1a30; --text:#e8eefc; --muted:#a9b6d3; --line:#22325a;
-      --accent:#22c55e; --accent2:#60a5fa; --warn:#f59e0b; --bad:#ef4444;
-      --shadow: 0 18px 50px rgba(0,0,0,.35); --radius: 18px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
-      --sans: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family:var(--sans); color:var(--text);
-      background: radial-gradient(1200px 600px at 20% 0%, rgba(96,165,250,.18), transparent 60%),
-                  radial-gradient(1000px 500px at 80% 10%, rgba(34,197,94,.16), transparent 55%),
-                  linear-gradient(180deg, #070c16, var(--bg));
-    }
-    .wrap{max-width:1100px; margin:0 auto; padding:28px 18px 64px;}
-    header{
-      display:flex; gap:14px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;
-      margin-bottom:18px;
-    }
-    .title{
-      flex:1 1 680px;
-      padding:18px 18px;
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-    }
-    h1{margin:0 0 6px; font-size:22px; letter-spacing:.2px;}
-    .subtitle{margin:0; color:var(--muted); line-height:1.45; font-size:14px;}
-    .pillrow{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px;}
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(10,16,30,.55);
-      padding:8px 10px;
-      border-radius:999px;
-      color:var(--muted);
-      font-size:12px;
-    }
-    .dot{width:8px; height:8px; border-radius:50%;}
-    .dot.green{background:var(--accent)}
-    .dot.blue{background:var(--accent2)}
-    .dot.amber{background:var(--warn)}
-    nav{
-      flex:0 0 auto;
-      display:flex; gap:10px; flex-wrap:wrap;
-      align-items:center; justify-content:flex-end;
-    }
-    nav a{
-      color:var(--text); text-decoration:none; font-size:13px;
-      padding:10px 12px; border-radius:12px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(10,16,30,.45);
-    }
-    nav a:hover{border-color: rgba(96,165,250,.6)}
-    .grid{display:grid; grid-template-columns: 1fr; gap:14px; margin-top:14px;}
-    @media (min-width: 980px){
-      .grid{grid-template-columns: 1.2fr .8fr;}
-    }
-    section.card{
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      padding:18px;
-    }
-    h2{margin:0 0 10px; font-size:16px;}
-    h3{margin:14px 0 8px; font-size:14px; color:#dbe7ff;}
-    p{margin:10px 0; color:var(--muted); line-height:1.6; font-size:14px;}
-    ul{margin:8px 0 0 18px; color:var(--muted); line-height:1.6; font-size:14px;}
-    li{margin:6px 0}
-    .callout{
-      border:1px solid rgba(34,197,94,.25);
-      background: rgba(34,197,94,.08);
-      padding:12px 12px;
-      border-radius:14px;
-      margin-top:12px;
-    }
-    .callout strong{color:#eafff1}
-    .split{
-      display:grid; grid-template-columns: 1fr; gap:12px; margin-top:12px;
-    }
-    @media (min-width: 780px){
-      .split{grid-template-columns: 1fr 1fr;}
-    }
-    .mini{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(10,16,30,.35);
-      border-radius:14px;
-      padding:12px;
-    }
-    .badge{
-      display:inline-flex; align-items:center; gap:8px;
-      font-size:12px; color:var(--muted);
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(10,16,30,.35);
-      padding:6px 10px; border-radius:999px;
-    }
-    code, pre{font-family:var(--mono);}
-    pre{
-      margin:10px 0 0;
-      padding:12px;
-      border-radius:14px;
-      background: rgba(0,0,0,.28);
-      border:1px solid rgba(255,255,255,.08);
-      overflow:auto;
-      color:#d7e4ff;
-      font-size:12px;
-      line-height:1.45;
-    }
-    .timeline{
-      border-left:2px solid rgba(96,165,250,.35);
-      margin:10px 0 0 4px;
-      padding-left:14px;
-    }
-    .titem{
-      margin:10px 0;
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(10,16,30,.35);
-      position:relative;
-    }
-    .titem::before{
-      content:"";
-      width:10px; height:10px;
-      border-radius:50%;
-      background: rgba(96,165,250,.9);
-      position:absolute;
-      left:-20px; top:14px;
-      box-shadow: 0 0 0 4px rgba(96,165,250,.12);
-    }
-    .tmeta{font-size:12px; color:var(--muted); margin-top:6px;}
-    .twoCol{
-      display:grid; grid-template-columns:1fr; gap:12px;
-    }
-    @media (min-width: 980px){
-      .twoCol{grid-template-columns:1fr 1fr;}
-    }
-
-    /* Quiz */
-    .quizHead{
-      display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;
-    }
-    .quizMeta{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-    }
-    .btn{
-      cursor:pointer;
-      border:none;
-      padding:10px 12px;
-      border-radius:12px;
-      font-size:13px;
-      color:#081224;
-      background: linear-gradient(180deg, rgba(34,197,94,1), rgba(34,197,94,.85));
-    }
-    .btn.secondary{
-      color: var(--text);
-      background: rgba(10,16,30,.55);
-      border:1px solid rgba(255,255,255,.10);
-    }
-    .btn:disabled{opacity:.6; cursor:not-allowed;}
-    .q{
-      margin-top:12px;
-      padding:12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(10,16,30,.35);
-    }
-    .qtitle{margin:0 0 10px; font-size:14px;}
-    .opts{display:grid; gap:8px;}
-    label.opt{
-      display:flex; gap:10px; align-items:flex-start;
-      padding:10px 10px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-      color:var(--muted);
-      cursor:pointer;
-    }
-    label.opt:hover{border-color: rgba(96,165,250,.5)}
-    input[type="radio"]{margin-top:3px}
-    .result{
-      margin-top:12px;
-      padding:12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.20);
-      color:var(--muted);
-      line-height:1.6;
-      font-size:14px;
-    }
-    .score{
-      font-size:14px; color:#eafff1;
-    }
-    .ok{color: #b9f6c9;}
-    .bad{color: #ffb4b4;}
-    footer{
-      margin-top:14px;
-      color:var(--muted);
-      font-size:12px;
-      opacity:.9;
-      text-align:center;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IOTA Notarization for VeriPura: Complete Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin: 30px 0 15px 0;
+            font-size: 2em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        h3 {
+            color: #764ba2;
+            margin: 25px 0 10px 0;
+            font-size: 1.5em;
+        }
+        
+        h4 {
+            color: #555;
+            margin: 20px 0 10px 0;
+            font-size: 1.2em;
+        }
+        
+        .functionality-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .use-case {
+            background: #fff;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .use-case:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+        
+        .use-case-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .benefits {
+            background: #e7f5ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        
+        .benefits ul {
+            margin-left: 20px;
+        }
+        
+        .benefits li {
+            margin: 8px 0;
+        }
+        
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .comparison-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .quiz-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            margin-top: 40px;
+        }
+        
+        .quiz-section h2 {
+            color: white;
+            border-bottom: 3px solid white;
+        }
+        
+        .question {
+            background: white;
+            color: #333;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .question h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .option {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .option:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+        
+        .option input[type="radio"] {
+            margin-right: 10px;
+        }
+        
+        .submit-btn {
+            background: white;
+            color: #667eea;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        
+        .submit-btn:hover {
+            background: #f8f9fa;
+            transform: scale(1.05);
+        }
+        
+        .result {
+            background: white;
+            color: #333;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .correct {
+            border-color: #28a745 !important;
+            background: #d4edda !important;
+        }
+        
+        .incorrect {
+            border-color: #dc3545 !important;
+            background: #f8d7da !important;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .transaction-flow {
+            background: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #764ba2;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="title">
-        <h1>IOTA Notarization for Compliance Documents</h1>
-        <p class="subtitle">
-          Practical summary of <strong>immutable notarization</strong> and <strong>versioned (change-tracked)</strong> documents,
-          with concrete VeriPura-style food import compliance use cases and a short multiple-choice quiz.
-        </p>
-        <div class="pillrow">
-          <span class="pill"><span class="dot green"></span> Immutable proof of existence</span>
-          <span class="pill"><span class="dot blue"></span> Version chain with tracked changes</span>
-          <span class="pill"><span class="dot amber"></span> Rebased-ready (smart contracts + identity)</span>
-        </div>
-      </div>
-      <nav>
-        <a href="#basics">Basics</a>
-        <a href="#approaches">Two Approaches</a>
-        <a href="#usecases">Use Cases</a>
-        <a href="#implementation">Implementation Options</a>
-        <a href="#quiz">Quiz</a>
-      </nav>
-    </header>
+    <div class="container">
+        <header>
+            <h1>IOTA Notarization for VeriPura</h1>
+            <p>Comprehensive Guide to Blockchain-Based Document Verification</p>
+        </header>
+        
+        <div class="content">
+            <h2>Core Functionality</h2>
+            
+            <div class="functionality-box">
+                <h3>What is IOTA Notarization?</h3>
+                <p>IOTA Notarization creates tamper-proof, timestamped records of digital assets on IOTA's Tangle network. It generates cryptographic proof that a document or data existed at a specific moment in time, enabling verification without revealing the actual content.</p>
+            </div>
+            
+            <h3>How It Works</h3>
+            <ol style="margin-left: 40px; margin-top: 15px;">
+                <li style="margin: 10px 0;"><strong>Hash the document/data</strong> - Creates a unique digital fingerprint</li>
+                <li style="margin: 10px 0;"><strong>Submit hash to IOTA network</strong> - Records it with timestamp</li>
+                <li style="margin: 10px 0;"><strong>Receive immutable proof</strong> - Get cryptographic evidence of existence</li>
+                <li style="margin: 10px 0;"><strong>Enable verification</strong> - Anyone can verify authenticity using the hash</li>
+            </ol>
+            
+            <div class="benefits">
+                <h4>Key Advantages Over Traditional Notarization</h4>
+                <ul>
+                    <li><strong>Instant:</strong> Seconds instead of days or weeks</li>
+                    <li><strong>Global:</strong> Accessible from anywhere in the world</li>
+                    <li><strong>Feeless:</strong> Critical for high-volume notarization (IOTA's unique advantage)</li>
+                    <li><strong>No intermediaries:</strong> Direct cryptographic verification</li>
+                    <li><strong>Cryptographically secure:</strong> Mathematically proven authenticity</li>
+                    <li><strong>Cost-effective at scale:</strong> Ideal for enterprise applications</li>
+                </ul>
+            </div>
+            
+            <h2>VeriPura-Specific Applications</h2>
+            
+            <div class="use-case">
+                <h3><span class="use-case-number">1</span>Health Certificate Notarization</h3>
+                <h4>Problem:</h4>
+                <p>Health certificates can be forged or disputed. EU customs has no quick way to verify authenticity without contacting the issuing authority, which can take days.</p>
+                
+                <h4>VeriPura Solution:</h4>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Exporting country's health authority notarizes certificate at issuance</li>
+                    <li>Importer uploads cert to VeriPura → instant verification against notarized hash</li>
+                    <li>EU customs scans QR code → sees cryptographic proof of authenticity</li>
+                    <li>No need to contact issuing authority (saves days)</li>
+                </ul>
+                
+                <div class="transaction-flow">
+                    <strong>Transaction Flow:</strong><br>
+                    • 1 notarization per certificate at issuance<br>
+                    • Multiple verification queries (importer, freight forwarder, customs)<br>
+                    • ~5-10 transactions per shipment
+                </div>
+            </div>
+            
+            <div class="use-case">
+                <h3><span class="use-case-number">2</span>Phytosanitary Certificate Chain of Custody</h3>
+                <h4>Problem:</h4>
+                <p>Phyto certificates change hands multiple times (inspector → ministry → exporter → importer). Questions about authenticity arise at each transfer point.</p>
+                
+                <h4>VeriPura Solution:</h4>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Each handoff notarized with timestamp</li>
+                    <li>Creates auditable chain showing certificate never left proper custody</li>
+                    <li>Detects if certificate was altered after initial issuance</li>
+                </ul>
+                
+                <div class="transaction-flow">
+                    <strong>Transaction Flow:</strong><br>
+                    • Initial issuance: 1 notarization<br>
+                    • Each transfer: 1 notarization<br>
+                    • ~4-6 transactions per certificate lifecycle
+                </div>
+            </div>
+            
+            <div class="use-case">
+                <h3><span class="use-case-number">3</span>Pesticide Residue Test Results</h3>
+                <h4>Problem:</h4>
+                <p>Lab test results can be backdated or falsified. Importers can't verify when tests were actually conducted.</p>
+                
+                <h4>VeriPura Solution:</h4>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Laboratory notarizes test results immediately upon completion</li>
+                    <li>Timestamp proves results aren't from old batch</li>
+                    <li>VeriPura automatically checks if test is <30 days old (EU requirement)</li>
+                </ul>
+                
+                <div class="transaction-flow">
+                    <strong>Transaction Flow:</strong><br>
+                    • 1 notarization per lab test<br>
+                    • Verification queries as needed<br>
+                    • High volume (every produce shipment requires testing)
+                </div>
+            </div>
+            
+            <div class="use-case">
+                <h3><span class="use-case-number">4</span>Certificate of Origin Validation</h3>
+                <h4>Problem:</h4>
+                <p>Preferential tariff treatment requires proof of origin. Certificate fraud is common, costing importers money in denied tariff benefits.</p>
+                
+                <h4>VeriPura Solution:</h4>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Chamber of Commerce notarizes certificate issuance</li>
+                    <li>Importer proves origin for tariff benefits without re-verification</li>
+                    <li>Customs can audit trail back to issuing authority</li>
+                </ul>
+                
+                <div class="transaction-flow">
+                    <strong>Transaction Flow:</strong><br>
+                    • 1 notarization per certificate<br>
+                    • Multiple customs queries<br>
+                    • ~3-5 transactions per shipment
+                </div>
+            </div>
+            
+            <div class="use-case">
+                <h3><span class="use-case-number">5</span>Document Revocation Registry</h3>
+                <h4>Problem:</h4>
+                <p>If a health authority discovers contamination post-certification, they revoke the certificate—but the importer may not know until cargo is rejected at the border, resulting in massive losses.</p>
+                
+                <h4>VeriPura Solution:</h4>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Initial certificate: notarized</li>
+                    <li>Revocation: new notarization with "REVOKED" status + reason</li>
+                    <li>VeriPura checks revocation status before shipment departs</li>
+                    <li>Real-time alerts to importer if certificate revoked</li>
+                </ul>
+                
+                <div class="transaction-flow">
+                    <strong>Transaction Flow:</strong><br>
+                    • 1 notarization per revocation event<br>
+                    • Continuous monitoring queries by VeriPura<br>
+                    • Prevents costly shipping of rejected cargo
+                </div>
+            </div>
+            
+            <div class="use-case">
+                <h3><span class="use-case-number">6</span>Invoice-Packing List-Certificate Reconciliation</h3>
+                <h4>Problem:</h4>
+                <p>EU customs requires invoice, packing list, and health certificate to match exactly. Discrepancies cause delays and potential rejection.</p>
+                
+                <h4>VeriPura Solution:</h4>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Notarize all three documents with cross-references</li>
+                    <li>VeriPura automatically checks: quantities match, dates align, products consistent</li>
+                    <li>Flags mismatches before shipment departs</li>
+                </ul>
+                
+                <div class="transaction-flow">
+                    <strong>Transaction Flow:</strong><br>
+                    • 3 notarizations per shipment (invoice + packing list + certificate)<br>
+                    • Automated reconciliation queries<br>
+                    • ~5-8 transactions per shipment
+                </div>
+            </div>
+            
+            <h2>Immutable vs. Versioned Documents</h2>
+            
+            <h3>Two Approaches to Document Management</h3>
+            
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Immutable Notarization</th>
+                        <th>Versioned Document Chain</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>How it works</strong></td>
+                        <td>Document hashed once and frozen at that moment</td>
+                        <td>Each version notarized with links to previous versions</td>
+                    </tr>
+                    <tr>
+                        <td><strong>When changes occur</strong></td>
+                        <td>New hash = proof document was altered</td>
+                        <td>Creates auditable chain showing what changed</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Best for</strong></td>
+                        <td>Final certificates, lab results, regulatory submissions</td>
+                        <td>Drafts, workflows, multi-authority approvals</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Verification</strong></td>
+                        <td>Match/no match against original hash</td>
+                        <td>Complete history of all changes with reasons</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Use case example</strong></td>
+                        <td>Final approved health certificate</td>
+                        <td>Certificate going through approval stages</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="functionality-box">
+                <h3>Certificate Amendment Tracking Example</h3>
+                <p><strong>Scenario:</strong> Health certificate issued, but exporter realizes product description contains typo. Authority issues amendment.</p>
+                
+                <div class="code-block">
+Version 1 (Original):
+- Issued: Jan 15, 2026
+- Product: "Frozen shrimp" 
+- Hash: abc123...
+- Status: "Issued"
 
-    <div class="grid">
-      <section id="basics" class="card">
-        <h2>What notarization does</h2>
-        <p>
-          Notarization anchors a cryptographic fingerprint (<strong>hash</strong>) of a document or dataset to the network.
-          This produces tamper-evident, timestamped proof that “this exact content existed at time T” without revealing the content itself.
-        </p>
-        <div class="split">
-          <div class="mini">
-            <span class="badge">Core outcome</span>
-            <ul>
-              <li>Proof-of-existence at a specific timestamp</li>
-              <li>Integrity check (detects changes)</li>
-              <li>Portable verification (anyone can verify with the hash)</li>
+Version 2 (Amended):
+- Issued: Jan 17, 2026
+- Product: "Frozen prawns" (corrected)
+- Hash: def456...
+- Previous: abc123...
+- Change: "Product name correction - no material change"
+- Status: "Amended"
+                </div>
+                
+                <p style="margin-top: 15px;"><strong>VeriPura Validation:</strong></p>
+                <ul style="margin-left: 20px;">
+                    <li>Check if amendment was authorized (health authority DID)</li>
+                    <li>Verify amendment reason is acceptable (typo vs. substantive change)</li>
+                    <li>Alert importer to review amendment</li>
+                    <li>EU customs sees complete history</li>
+                </ul>
+            </div>
+            
+            <h2>Strategic Advantages for VeriPura</h2>
+            
+            <h3>vs. Traditional Blockchain</h3>
+            <div class="benefits">
+                <ul>
+                    <li><strong>Feeless:</strong> Can notarize every minor event without cost constraints</li>
+                    <li><strong>Scalability:</strong> Handles high transaction volumes (thousands of shipments daily)</li>
+                    <li><strong>Speed:</strong> Instant notarization (critical for time-sensitive certifications)</li>
+                </ul>
+            </div>
+            
+            <h3>vs. Centralized Database</h3>
+            <div class="benefits">
+                <ul>
+                    <li><strong>Trust-minimized:</strong> No single party controls the record</li>
+                    <li><strong>Globally verifiable:</strong> Anyone can verify without VeriPura as intermediary</li>
+                    <li><strong>Regulatory compliance:</strong> Immutable audit trails for EU regulations</li>
+                </ul>
+            </div>
+            
+            <h3>Business Model Implications</h3>
+            <ul style="margin-left: 40px; margin-top: 15px;">
+                <li style="margin: 10px 0;">Can offer "freemium" notarization (low marginal cost)</li>
+                <li style="margin: 10px 0;">Premium features: automated monitoring, revocation alerts, reconciliation</li>
+                <li style="margin: 10px 0;">Network effects: More notarized documents = more valuable verification service</li>
             </ul>
-          </div>
-          <div class="mini">
-            <span class="badge">Why this matters in trade</span>
-            <ul>
-              <li>Reduces “faxed copy of a photocopy” authenticity ambiguity</li>
-              <li>Creates auditability across exporters, labs, forwarders, customs</li>
-              <li>Turns disputes into hash comparisons + issuance history</li>
-            </ul>
-          </div>
+            
+            <h2>Implementation Roadmap</h2>
+            
+            <div class="use-case">
+                <h3>Phase 1 (Immediate)</h3>
+                <ul style="margin-left: 20px;">
+                    <li>Health certificate notarization</li>
+                    <li>Certificate of origin validation</li>
+                    <li>Document revocation registry</li>
+                </ul>
+            </div>
+            
+            <div class="use-case">
+                <h3>Phase 2 (3-6 months)</h3>
+                <ul style="margin-left: 20px;">
+                    <li>Phytosanitary certificate chain of custody</li>
+                    <li>Lab test result timestamping</li>
+                    <li>Invoice-packing list-certificate reconciliation</li>
+                </ul>
+            </div>
+            
+            <div class="use-case">
+                <h3>Phase 3 (Future)</h3>
+                <ul style="margin-left: 20px;">
+                    <li>Multi-language document integrity</li>
+                    <li>Exporter self-audit trails</li>
+                    <li>Smart contract enforcement for workflows</li>
+                </ul>
+            </div>
         </div>
-
-        <div class="callout">
-          <strong>VeriPura fit:</strong> Notarization is the trust layer under document compliance (health certs, phyto certs,
-          certificates of origin, lab tests, invoice/packing list reconciliation, revocations, amendments).
+        
+        <div class="quiz-section">
+            <h2>Knowledge Check Quiz</h2>
+            <p style="margin-bottom: 20px;">Test your understanding of IOTA Notarization and VeriPura applications</p>
+            
+            <div class="question">
+                <h4>Question 1: What is the primary advantage of IOTA's feeless transactions for VeriPura?</h4>
+                <label class="option">
+                    <input type="radio" name="q1" value="a">
+                    <span>A) It makes the platform more secure</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q1" value="b">
+                    <span>B) It enables high-volume notarization without cost constraints</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q1" value="c">
+                    <span>C) It makes documents upload faster</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q1" value="d">
+                    <span>D) It eliminates the need for blockchain entirely</span>
+                </label>
+            </div>
+            
+            <div class="question">
+                <h4>Question 2: In the Document Revocation Registry use case, what is the main benefit for importers?</h4>
+                <label class="option">
+                    <input type="radio" name="q2" value="a">
+                    <span>A) They can modify certificates themselves</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q2" value="b">
+                    <span>B) They receive real-time alerts if certificates are revoked before shipment</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q2" value="c">
+                    <span>C) They can skip customs inspection</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q2" value="d">
+                    <span>D) They get lower shipping rates</span>
+                </label>
+            </div>
+            
+            <div class="question">
+                <h4>Question 3: What does "immutable notarization" mean?</h4>
+                <label class="option">
+                    <input type="radio" name="q3" value="a">
+                    <span>A) Documents can be updated an unlimited number of times</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q3" value="b">
+                    <span>B) Documents are encrypted so no one can read them</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q3" value="c">
+                    <span>C) The document hash is frozen at a specific moment; any change creates a different hash</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q3" value="d">
+                    <span>D) Only government authorities can verify the document</span>
+                </label>
+            </div>
+            
+            <div class="question">
+                <h4>Question 4: How many transactions are typically generated per shipment for Health Certificate Notarization?</h4>
+                <label class="option">
+                    <input type="radio" name="q4" value="a">
+                    <span>A) 1 transaction only</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q4" value="b">
+                    <span>B) 5-10 transactions (issuance + multiple verifications)</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q4" value="c">
+                    <span>C) 100+ transactions</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q4" value="d">
+                    <span>D) It varies based on shipment size</span>
+                </label>
+            </div>
+            
+            <div class="question">
+                <h4>Question 5: What problem does the Invoice-Packing List-Certificate Reconciliation solve?</h4>
+                <label class="option">
+                    <input type="radio" name="q5" value="a">
+                    <span>A) It reduces shipping costs</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q5" value="b">
+                    <span>B) It automatically flags mismatches between documents before shipment departs</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q5" value="c">
+                    <span>C) It translates documents into multiple languages</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q5" value="d">
+                    <span>D) It eliminates the need for packing lists</span>
+                </label>
+            </div>
+            
+            <div class="question">
+                <h4>Question 6: What is the key difference between immutable and versioned document approaches?</h4>
+                <label class="option">
+                    <input type="radio" name="q6" value="a">
+                    <span>A) Versioned documents track change history with links between versions; immutable documents are frozen</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q6" value="b">
+                    <span>B) Immutable documents cost more to notarize</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q6" value="c">
+                    <span>C) Versioned documents don't use blockchain</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q6" value="d">
+                    <span>D) There is no difference; they work the same way</span>
+                </label>
+            </div>
+            
+            <div class="question">
+                <h4>Question 7: Why is IOTA's feeless model specifically important for the Cold Chain Integrity Notarizer concept?</h4>
+                <label class="option">
+                    <input type="radio" name="q7" value="a">
+                    <span>A) Because it only needs one transaction per shipment</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q7" value="b">
+                    <span>B) Because 96 notarizations per day per container (every 15 min) would be economically prohibitive with gas fees</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q7" value="c">
+                    <span>C) Because cold chain monitoring doesn't require blockchain</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q7" value="d">
+                    <span>D) Because it eliminates the need for IoT sensors</span>
+                </label>
+            </div>
+            
+            <div class="question">
+                <h4>Question 8: In VeriPura's implementation roadmap, which features are prioritized for Phase 1?</h4>
+                <label class="option">
+                    <input type="radio" name="q8" value="a">
+                    <span>A) Multi-language document integrity and exporter self-audit trails</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q8" value="b">
+                    <span>B) Health certificate notarization, certificate of origin validation, and document revocation registry</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q8" value="c">
+                    <span>C) Smart contract enforcement for workflows</span>
+                </label>
+                <label class="option">
+                    <input type="radio" name="q8" value="d">
+                    <span>D) Cold chain integrity monitoring with IoT sensors</span>
+                </label>
+            </div>
+            
+            <button class="submit-btn" onclick="checkAnswers()">Submit Quiz</button>
+            
+            <div class="result" id="result"></div>
         </div>
-      </section>
-
-      <section class="card">
-        <h2>Quick definitions</h2>
-        <div class="mini">
-          <p><strong>Hash</strong> = unique fingerprint of a file. If the file changes, the hash changes.</p>
-          <p><strong>Immutable notarization</strong> = notarize once; any later change won’t match.</p>
-          <p><strong>Versioned tracking</strong> = notarize every revision and link it to the prior version.</p>
-        </div>
-        <div class="mini" style="margin-top:12px;">
-          <span class="badge">Practical rule</span>
-          <p>
-            If a document is supposed to be “final” (e.g., a completed lab test result), treat it as immutable.
-            If it legitimately evolves (draft → reviewed → amended → final), track it with versioning.
-          </p>
-        </div>
-      </section>
     </div>
-
-    <section id="approaches" class="card" style="margin-top:14px;">
-      <h2>Two document strategies</h2>
-
-      <div class="twoCol">
-        <div class="mini">
-          <h3>Approach 1 — Immutable Document Notarization</h3>
-          <p>
-            Notarize the hash once. Verification is a direct check: <code>hash(current file) == hash(notarized)</code>.
-          </p>
-          <ul>
-            <li>Best for: final signed certificates, lab results, issued certificates of origin</li>
-            <li>Detects: post-issuance edits, forged copies, silent substitutions</li>
-            <li>Simple: minimal metadata needed</li>
-          </ul>
-          <pre>Notarization event:
-- doc_hash: abc123...
-- timestamp: T0
-- issuer_did: HealthAuthorityDID</pre>
-        </div>
-
-        <div class="mini">
-          <h3>Approach 2 — Versioned Document Chain (Tracked Changes)</h3>
-          <p>
-            Notarize each revision and link it to the previous version. This yields an auditable history: what changed, when, and who did it.
-          </p>
-          <ul>
-            <li>Best for: drafts, multi-stage approvals, amendments/corrections</li>
-            <li>Detects: unauthorized changes, out-of-sequence approvals</li>
-            <li>Supports: “current version pointer” + full version graph</li>
-          </ul>
-          <pre>Version chain:
-v1: hash abc123... (Draft)          prev: null
-v2: hash def456... (Revised)        prev: abc123...
-v3: hash ghi789... (Final Approved) prev: def456...</pre>
-        </div>
-      </div>
-    </section>
-
-    <section id="usecases" class="card" style="margin-top:14px;">
-      <h2>Illustrated VeriPura-style use cases</h2>
-
-      <div class="mini">
-        <h3>Use Case 1 — Certificate Amendment Tracking</h3>
-        <p>
-          Health certificate issued, then corrected (typo vs material change). Versioning makes the correction transparent and verifiable.
-        </p>
-        <div class="timeline">
-          <div class="titem">
-            <strong>v1 — Issued</strong>
-            <div class="tmeta">
-              Product: “Frozen shrimp” · Status: Issued · Hash: abc123… · Issuer: Authority DID
-            </div>
-          </div>
-          <div class="titem">
-            <strong>v2 — Amended</strong>
-            <div class="tmeta">
-              Product corrected to “Frozen prawns” · Change reason: clerical · Hash: def456… · Prev: abc123…
-            </div>
-          </div>
-        </div>
-        <p>
-          VeriPura validation logic: verify amendment author (authority DID), require a reason code, alert importer if change is “material”.
-        </p>
-      </div>
-
-      <div class="mini" style="margin-top:12px;">
-        <h3>Use Case 2 — Multi-stage Approval Workflow</h3>
-        <p>
-          Document moves from exporter draft to final approval, with intermediate steps (e.g., lab test required).
-          Each step becomes a version.
-        </p>
-        <div class="timeline">
-          <div class="titem"><strong>v1</strong><div class="tmeta">Exporter submits draft · Hash: v1…</div></div>
-          <div class="titem"><strong>v2</strong><div class="tmeta">Inspector requests pesticide test · Hash: v2… · Prev: v1…</div></div>
-          <div class="titem"><strong>v3</strong><div class="tmeta">Lab results attached · Hash: v3… · Prev: v2…</div></div>
-          <div class="titem"><strong>v4</strong><div class="tmeta">Health authority approves (final) · Hash: v4… · Prev: v3…</div></div>
-          <div class="titem"><strong>v5</strong><div class="tmeta">Chamber co-signs · Hash: v5… · Prev: v4…</div></div>
-        </div>
-        <p>
-          With Rebased smart contracts, you can enforce sequence rules (e.g., v4 cannot exist unless v3 exists).
-        </p>
-      </div>
-
-      <div class="mini" style="margin-top:12px;">
-        <h3>Use Case 3 — “Living Template” for Recurring Shipments</h3>
-        <p>
-          Keep a master template immutable (static exporter/importer/product specs), then notarize batch-specific instances that reference it.
-        </p>
-        <pre>Master Template (Immutable):
-- exporter/importer identities
-- product specs + protocols
-- master_hash: master_abc123...
-
-Batch Instance #2026-003:
-- references master_abc123...
-- batch fields (date, quantity, lot)
-- hash: batch_def456...
-
-Batch Instance #2026-004:
-- references master_abc123...
-- hash: batch_ghi789...</pre>
-        <p>
-          Benefit: consistency across shipments, faster doc generation, and clear auditability of what’s fixed vs what changes.
-        </p>
-      </div>
-    </section>
-
-    <section id="implementation" class="card" style="margin-top:14px;">
-      <h2>Implementation options</h2>
-
-      <div class="twoCol">
-        <div class="mini">
-          <h3>Option A — Off-chain version management</h3>
-          <p>Each document version is notarized, but the “links” (prev version, change description) live in VeriPura’s database.</p>
-          <ul>
-            <li>Pros: fastest build, flexible metadata</li>
-            <li>Cons: version chain integrity depends on VeriPura availability and correctness</li>
-          </ul>
-        </div>
-
-        <div class="mini">
-          <h3>Option B — On-chain version graph (Rebased smart contract)</h3>
-          <p>Smart contract stores the version relationships and permissions. Anyone can reconstruct history from chain state.</p>
-          <ul>
-            <li>Pros: trust-minimized, cryptographically enforced sequence</li>
-            <li>Cons: more contract logic + testing</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="mini" style="margin-top:12px;">
-        <h3>Option C — Hybrid approach (recommended for VeriPura)</h3>
-        <ul>
-          <li><strong>Immutable</strong> for final documents: one notarization = “frozen”.</li>
-          <li><strong>Versioned</strong> for drafts/workflows/amendments: notarize each change, link versions.</li>
-          <li><strong>Template + instances</strong> for recurring shipments: one immutable master, multiple batch notarizations.</li>
-        </ul>
-
-        <pre>// Conceptual data tracked per version:
-- content_hash (what)
-- timestamp (when)
-- author_did (who)
-- change_description (why)
-- previous_hash (link)</pre>
-      </div>
-    </section>
-
-    <section id="quiz" class="card" style="margin-top:14px;">
-      <div class="quizHead">
-        <div>
-          <h2>Multiple-choice quiz</h2>
-          <p class="subtitle" style="margin-top:6px;">
-            Answer all questions, then click “Grade quiz”. Your score and an explanation will appear.
-          </p>
-        </div>
-        <div class="quizMeta">
-          <button class="btn secondary" id="resetBtn" type="button">Reset</button>
-          <button class="btn" id="gradeBtn" type="button">Grade quiz</button>
-        </div>
-      </div>
-
-      <div id="quizContainer"></div>
-      <div id="result" class="result" style="display:none;"></div>
-    </section>
-
-    <footer>
-      Built as a single-file HTML explainer + quiz. Edit freely for your hackathon deck/demo.
-    </footer>
-  </div>
-
-  <script>
-    const quiz = [
-      {
-        id: "q1",
-        question: "What does immutable notarization prove?",
-        options: [
-          "That a document can be edited freely without detection",
-          "That a specific document version existed at a specific time and has not changed",
-          "That the full document contents are publicly visible on-chain",
-          "That only VeriPura can verify authenticity"
-        ],
-        correctIndex: 1,
-        explain: "Immutable notarization anchors a hash + timestamp. If the file changes, the hash won’t match."
-      },
-      {
-        id: "q2",
-        question: "Which scenario is best suited to versioned (change-tracked) notarization?",
-        options: [
-          "Final lab test result that must never change after issuance",
-          "A signed certificate of origin issued by a chamber of commerce",
-          "A draft health certificate moving through review, amendments, and final approval",
-          "A PDF you never intend to share with anyone"
-        ],
-        correctIndex: 2,
-        explain: "Versioned tracking is for legitimate document evolution (draft → review → amended → final)."
-      },
-      {
-        id: "q3",
-        question: "In a version chain, what is the main purpose of storing the previous version hash?",
-        options: [
-          "To compress the document file size",
-          "To link each version cryptographically to the version before it",
-          "To make the document readable by customs scanners",
-          "To encrypt the document contents"
-        ],
-        correctIndex: 1,
-        explain: "The previous hash creates a verifiable chain so you can prove sequence and detect tampering."
-      },
-      {
-        id: "q4",
-        question: "What does the hybrid approach recommend for VeriPura?",
-        options: [
-          "Only immutable notarization for everything",
-          "Only versioned tracking for everything",
-          "Immutable notarization for final documents, versioned tracking for drafts/amendments, templates for recurring shipments",
-          "No notarization until after the container arrives"
-        ],
-        correctIndex: 2,
-        explain: "Different document types require different controls: final docs should be frozen; workflows need tracked changes."
-      },
-      {
-        id: "q5",
-        question: "If customs receives a certificate copy that does NOT match the notarized hash, the most accurate conclusion is:",
-        options: [
-          "The document must be valid; hashes are unreliable",
-          "The document content differs from the notarized version (altered, substituted, or corrupted)",
-          "The notarization automatically updates to match the new content",
-          "Only the timestamp is wrong; the content is definitely correct"
-        ],
-        correctIndex: 1,
-        explain: "A mismatch means the file content differs from what was notarized—exactly what hashes are designed to detect."
-      },
-      {
-        id: "q6",
-        question: "What additional fields make version tracking more useful for compliance (beyond hash + timestamp)?",
-        options: [
-          "Author DID and change description",
-          "A rainbow color label for each version",
-          "A password embedded in the PDF",
-          "A screenshot of the document on a phone"
-        ],
-        correctIndex: 0,
-        explain: "Who changed it (DID) and why (description/reason code) are crucial for auditability."
-      }
-    ];
-
-    const quizContainer = document.getElementById("quizContainer");
-    const resultBox = document.getElementById("result");
-    const gradeBtn = document.getElementById("gradeBtn");
-    const resetBtn = document.getElementById("resetBtn");
-
-    function renderQuiz(){
-      quizContainer.innerHTML = "";
-      quiz.forEach((q, idx) => {
-        const div = document.createElement("div");
-        div.className = "q";
-        div.innerHTML = `
-          <p class="qtitle"><strong>Q${idx+1}.</strong> ${q.question}</p>
-          <div class="opts">
-            ${q.options.map((opt, i) => `
-              <label class="opt">
-                <input type="radio" name="${q.id}" value="${i}" />
-                <span>${opt}</span>
-              </label>
-            `).join("")}
-          </div>
-        `;
-        quizContainer.appendChild(div);
-      });
-      resultBox.style.display = "none";
-      resultBox.innerHTML = "";
-    }
-
-    function gradeQuiz(){
-      let correct = 0;
-      const details = [];
-
-      quiz.forEach((q, idx) => {
-        const picked = document.querySelector(`input[name="${q.id}"]:checked`);
-        const pickedIndex = picked ? parseInt(picked.value, 10) : null;
-        const isCorrect = pickedIndex === q.correctIndex;
-        if (isCorrect) correct++;
-
-        details.push({
-          n: idx+1,
-          isCorrect,
-          pickedIndex,
-          correctIndex: q.correctIndex,
-          explain: q.explain
-        });
-      });
-
-      const total = quiz.length;
-      const pct = Math.round((correct/total) * 100);
-
-      let html = `<div class="score">Score: ${correct} / ${total} (${pct}%)</div>`;
-      html += `<div style="margin-top:10px;">`;
-
-      details.forEach(d => {
-        const status = d.isCorrect ? `<span class="ok">Correct</span>` : `<span class="bad">Incorrect</span>`;
-        const pickedText = (d.pickedIndex === null) ? "No answer" : quiz[d.n-1].options[d.pickedIndex];
-        const correctText = quiz[d.n-1].options[d.correctIndex];
-        html += `
-          <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,.10);">
-            <div><strong>Q${d.n}:</strong> ${status}</div>
-            <div style="margin-top:6px; color: var(--muted);">
-              <div><strong>Your answer:</strong> ${pickedText}</div>
-              <div><strong>Correct answer:</strong> ${correctText}</div>
-              <div style="margin-top:6px;"><strong>Why:</strong> ${d.explain}</div>
-            </div>
-          </div>
-        `;
-      });
-
-      html += `</div>`;
-
-      resultBox.innerHTML = html;
-      resultBox.style.display = "block";
-      resultBox.scrollIntoView({behavior:"smooth", block:"start"});
-    }
-
-    function resetQuiz(){
-      const radios = document.querySelectorAll('input[type="radio"]');
-      radios.forEach(r => r.checked = false);
-      resultBox.style.display = "none";
-      resultBox.innerHTML = "";
-      window.scrollTo({top: 0, behavior: "smooth"});
-    }
-
-    gradeBtn.addEventListener("click", gradeQuiz);
-    resetBtn.addEventListener("click", () => { renderQuiz(); resetQuiz(); });
-
-    renderQuiz();
-  </script>
+    
+    <script>
+        function checkAnswers() {
+            const answers = {
+                q1: 'b',
+                q2: 'b',
+                q3: 'c',
+                q4: 'b',
+                q5: 'b',
+                q6: 'a',
+                q7: 'b',
+                q8: 'b'
+            };
+            
+            let score = 0;
+            let total = Object.keys(answers).length;
+            
+            // Check each answer
+            for (let question in answers) {
+                const selected = document.querySelector(`input[name="${question}"]:checked`);
+                const options = document.querySelectorAll(`input[name="${question}"]`);
+                
+                // Remove previous styling
+                options.forEach(opt => {
+                    opt.parentElement.classList.remove('correct', 'incorrect');
+                });
+                
+                if (selected) {
+                    if (selected.value === answers[question]) {
+                        score++;
+                        selected.parentElement.classList.add('correct');
+                    } else {
+                        selected.parentElement.classList.add('incorrect');
+                        // Highlight correct answer
+                        document.querySelector(`input[name="${question}"][value="${answers[question]}"]`).parentElement.classList.add('correct');
+                    }
+                }
+            }
+            
+            // Display result
+            const resultDiv = document.getElementById('result');
+            const percentage = (score / total * 100).toFixed(0);
+            
+            let message = '';
+            let color = '';
+            
+            if (percentage >= 90) {
+                message = 'Excellent! You have a strong understanding of IOTA Notarization and VeriPura applications.';
+                color = '#28a745';
+            } else if (percentage >= 70) {
+                message = 'Good job! You understand the core concepts. Review the highlighted areas for improvement.';
+                color = '#17a2b8';
+            } else if (percentage >= 50) {
+                message = 'Fair understanding. Review the material to strengthen your knowledge.';
+                color = '#ffc107';
+            } else {
+                message = 'Consider reviewing the material above to better understand IOTA Notarization concepts.';
+                color = '#dc3545';
+            }
+            
+            resultDiv.innerHTML = `
+                <h3 style="color: ${color}">Your Score: ${score} / ${total} (${percentage}%)</h3>
+                <p style="margin-top: 15px; font-size: 1.1em;">${message}</p>
+                <ul style="margin-top: 15px; margin-left: 20px;">
+                    <li><span style="background: #d4edda; padding: 5px 10px; border-radius: 3px; margin-right: 5px;">Green</span> = Correct answer</li>
+                    <li><span style="background: #f8d7da; padding: 5px 10px; border-radius: 3px; margin-right: 5px;">Red</span> = Incorrect answer</li>
+                </ul>
+            `;
+            
+            resultDiv.classList.add('show');
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    </script>
 </body>
 </html>
